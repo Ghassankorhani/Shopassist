@@ -184,7 +184,7 @@ Stage 3 — Recommendation
 
 ---
 
-## 👤 Author
+## 👤 Developer
 
 **Ghassan Korhani**
-[github.com/YOUR_USERNAME](https://github.com/YOUR_USERNAME)
+[github.com/Ghassankorhani](https://github.com/Ghassankorhani)
