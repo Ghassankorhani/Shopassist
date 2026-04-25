@@ -47,10 +47,14 @@ class RAGPipeline:
         existing = [c.name for c in self.client.list_collections()]
 
         if "products" in existing:
-            log.info("Loading existing collection...")
             self.collection = self.client.get_collection("products")
             self.total_chunks = self.collection.count()
             log.info("%d chunks loaded.", self.total_chunks)
+            # If chunks are too few something went wrong — rebuild
+            if self.total_chunks < 10:
+                log.warning("Too few chunks (%d) — rebuilding vectorstore...", self.total_chunks)
+                self.client.delete_collection("products")
+                self._build()
         else:
             log.info("Building collection from PDFs...")
             self._build()

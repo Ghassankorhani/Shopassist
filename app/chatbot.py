@@ -18,7 +18,8 @@ CATEGORY_KEYWORDS = {
         # English
         "charger", "wall charger", "adapter", "plug", "watt", "usb",
         "fast charge", "quick charge", "gan", "power adapter", "outlet",
-        "charging brick", "wall plug", "socket", "usb-c", "usb-a",
+        "charging brick", "wall plug", "socket", "usb-c", "usb-a","charge",
+        "Charging","phone"
         # Arabic
         "شاحن", "محول", "مشحن", "شاحن حائط", "مقبس", "كهرباء",
     ],
