@@ -94,34 +94,46 @@ Run it with **Docker**.
 #### Step 1 — Make sure Docker is installed
 Download from 👉 [docker.com/get-started](https://www.docker.com/get-started)
 
-#### Step 2 — Add your API key
-```bash
-cp .env.example .env
-# Open .env and add: ANTHROPIC_API_KEY=sk-ant-your-key-here
-```
+#### Step 2 — Clone the Repo
+git clone https://github.com/Ghassankorhani/Shopassist.git
+cd Shopassist
 
-#### Step 3 — Add your product PDFs
-Copy your catalog PDF files into `data/raw/`:
-```
+#### Step 3 — Add your API key
+cp .env.example .env
+
+Open .env and add:
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+
+#### Step 4 — Add your product PDFs
+Copy your catalog PDF files into data/raw/:
+
 data/raw/wall_chargers.pdf
 data/raw/power_banks.pdf
 data/raw/travel_bags.pdf
 data/raw/home_kitchen.pdf
-```
 
-#### Step 4 — Build and run
-```bash
+### Step 5 — Build the image
 docker build -t shopassist .
-docker run --rm -p 8501:8501 --env-file .env shopassist
-```
 
 > ⏳ First build takes time (downloads packages + embedding model).
 > After that, rebuilds are much faster.
 
-#### Step 5 — Open in your browser
+### Step 6 — Run the container
 ```
+Windows (PowerShell):
+powershelldocker run --rm -p 8501:8501 --env-file .env -v "${PWD}/data:/app/data" shopassist
+
+macOS / Linux:
+bashdocker run --rm -p 8501:8501 --env-file .env -v "$(pwd)/data:/app/data" shopassi
+
+```
+
+### Step 7 — Open in your browser
 http://localhost:8501
-```
+
+💡 The -v flag mounts your local data/ folder into the container.
+This ensures the vectorstore and chat history persist between runs.
+
 
 ---
 
