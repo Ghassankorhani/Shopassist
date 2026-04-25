@@ -1,0 +1,34 @@
+##langchain
+#langchain-community
+#langchain-anthropic
+#langchain-huggingface
+#langchain-chroma
+#langchain-text-splitters
+#chromadb
+#sentence-transformers
+#torch --extra-index-url https://download.pytorch.org/whl/cpu
+#pypdf
+#anthropic
+#streamlit
+#plotly
+#pydantic-settings
+#python-dotenv
+#fastapi
+#uvicorn[standard]
+
+
+langchain
+langchain-community
+langchain-anthropic
+langchain-huggingface
+langchain-chroma
+chromadb
+sentence-transformers
+pypdf
+anthropic
+streamlit
+pydantic-settings
+python-dotenv
+langchain-text-splitters
+plotly
+torch --index-url https://download.pytorch.org/whl/cpu
