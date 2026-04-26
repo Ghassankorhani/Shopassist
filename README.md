@@ -6,7 +6,7 @@
 
 ## 📌 Overview
 
-Online shoppers often know what they want but not which product fits best. ShopAssist solves this by acting as a conversational product advisor — it identifies the product category, asks focused clarifying questions, and delivers a tailored recommendation based on the customer's actual needs.
+Online shoppers often know what they want but not which product fits best. ShopAssist solves this by acting as a conversational product advisor, it identifies the product category, asks focused clarifying questions, and delivers a tailored recommendation based on the customer's actual needs.
 
 Built for **Accord Business Group**.
 
@@ -71,7 +71,7 @@ shopassist/
 │
 ├── data/
 │   ├── raw/               # Product PDF catalog files (add yours here)
-│   ├── vectorstore/       # Auto-generated ChromaDB (do not edit)
+│   ├── vectorstore/       # Auto-generated ChromaDB 
 │   └── history.json       # Persistent chat history (auto-generated)
 │
 ├── .env.example           # Environment variable template
@@ -131,15 +131,11 @@ bashdocker run --rm -p 8501:8501 --env-file .env -v "$(pwd)/data:/app/data" shop
 ### Step 7 — Open in your browser
 http://localhost:8501
 
-💡 The -v flag mounts your local data/ folder into the container.
-This ensures the vectorstore and chat history persist between runs.
-
 
 ---
 
 ## ⚙️ Configuration
 
-All settings are in `app/config.py` and can be overridden via `.env`.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -192,8 +188,7 @@ Stage 3 — Recommendation
 ## 📝 Notes
 
 - Chat history saved to `data/history.json` — persists across sessions
-- The `.env` file is excluded from Git — your API key stays private
-- Always use the `-v` flag when running Docker to persist data correctly
+- The `.env` file is excluded from Git, Please insert your Anthropic API key
 - PDFs must be placed in `data/raw/` before running
 
 ## 🧠 Auto Classification
