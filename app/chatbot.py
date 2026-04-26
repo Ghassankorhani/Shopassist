@@ -12,14 +12,26 @@ from rag import RAGPipeline
 
 log = logging.getLogger(__name__)
 
+# ── Auto classification mode ──────────────────────────────────────────────────
+# Automatically selects the classification approach based on catalog size:
+#   ≤ 4 PDFs  → "keywords"   (fast, manual keywords, works for small catalogs)
+#   > 4 PDFs  → "embeddings" (automatic, scales to any catalog size)
+#
+def get_classification_mode() -> str:
+    #Detect how many PDFs exist and pick the best classification approach
+    pdf_count = len(list(Path(cfg.data_dir).glob("*.pdf")))
+    mode = "embeddings" if pdf_count > 4 else "keywords"
+    log.info("PDFs found: %d → classification mode: %s", pdf_count, mode)
+    return mode
+
 # Keywords used to detect which product category the user is asking for
 CATEGORY_KEYWORDS = {
     "wall_chargers": [
         # English
         "charger", "wall charger", "adapter", "plug", "watt", "usb",
         "fast charge", "quick charge", "gan", "power adapter", "outlet",
-        "charging brick", "wall plug", "socket", "usb-c", "usb-a","charge",
-        "Charging","phone"
+        "charging brick", "wall plug", "socket", "usb-c", "usb-a", "charge",
+        "charging", "phone",
         # Arabic
         "شاحن", "محول", "مشحن", "شاحن حائط", "مقبس", "كهرباء",
     ],
@@ -62,7 +74,7 @@ RECOMMENDATION_SIGNALS = [
     "أنصحك", "أقترح", "الخيار الأفضل", "مثالي", "الأنسب", "أوصي",
 ]
 
-#Sent to Claude on every message
+# Sent to Claude on every message
 PROMPT = """أنت ShopAssist، مساعد تسوق ذكي يساعد العملاء في اكتشاف المنتجات المناسبة.
 You are ShopAssist, a smart shopping assistant that helps customers find the right product.
 
@@ -92,29 +104,30 @@ You are ShopAssist, a smart shopping assistant that helps customers find the rig
 {message}
 """
 
-##Handles savings and loads the conv to JSON file
+
+## Handles saving and loading the conversations to JSON file
 class ChatHistory:
-    # Create the folder if it doesn't exist, and load existing history or start fresh  
+
+    # Create the folder if it doesn't exist, and load existing history or start fresh
     def __init__(self):
-        # Ensure the data directory and history file exist
         Path(cfg.history_file).parent.mkdir(parents=True, exist_ok=True)
         self.path = Path(cfg.history_file)
         self.data: dict = self._load()
-    
+
     def _load(self) -> dict:
-        """Load existing history from JSON file, or return empty dict."""
+        # Load existing history from JSON file, or return empty dict
         if self.path.exists():
             with open(self.path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return {}
 
     def _save(self):
-        """Persist the current history to disk."""
+        #Persist the current history to disk
         with open(self.path, "w", encoding="utf-8") as f:
             json.dump(self.data, f, ensure_ascii=False, indent=2)
 
     def new_session(self) -> str:
-        """Create a new session with a unique ID and save it."""
+        #Create a new session with a unique ID and save it
         sid = str(uuid.uuid4())[:8]
         self.data[sid] = {
             "created_at": datetime.now().isoformat(),
@@ -124,7 +137,7 @@ class ChatHistory:
         return sid
 
     def add(self, sid: str, role: str, content: str):
-        """Append a message to a session and save."""
+        #Append a message to a session and save
         self.data[sid]["messages"].append({
             "role": role,
             "content": content,
@@ -133,20 +146,20 @@ class ChatHistory:
         self._save()
 
     def get_messages(self, sid: str) -> list:
-        """Return all messages for a session."""
+        #Return all messages for a session
         return self.data.get(sid, {}).get("messages", [])
 
     def get_all_sessions(self) -> dict:
-        """Return all sessions (used by UI to list history)."""
+        #Return all sessions (used by UI to list history)
         return self.data
 
     def delete_session(self, sid: str):
-        """Remove a session from history."""
+        #Remove a session from history
         self.data.pop(sid, None)
         self._save()
 
     def format_for_prompt(self, sid: str) -> str:
-        """Format the last 10 messages as a readable string for the LLM prompt."""
+        #Format the last 10 messages as a readable string for the LLM prompt
         msgs = self.get_messages(sid)[-10:]
         lines = []
         for m in msgs:
@@ -154,7 +167,8 @@ class ChatHistory:
             lines.append(f"{speaker}: {m['content']}")
         return "\n".join(lines) if lines else "لا توجد رسائل سابقة. / No previous messages."
 
-#Language detection, RAG search and claude calls all happen here
+
+# Language detection, RAG search and Claude calls all happen here
 class Chatbot:
 
     def __init__(self, rag: RAGPipeline):
@@ -167,26 +181,42 @@ class Chatbot:
             max_tokens=cfg.max_tokens,
             temperature=cfg.temperature,
         )
-
+        self.classification_mode = get_classification_mode()
+        
+    # Start a fresh conversation session
     def new_session(self) -> str:
-        """Start a fresh conversation session."""
         return self.history.new_session()
 
     def chat(self, sid: str, user_msg: str, session_state: dict) -> str:
         """
-        Process a user message and return the assistant's reply.
-        Updates session_state (category, language, stage, question count).
+        Process one user message and return the assistant reply.
+
+        Flow:
+        1. Detect language
+        2. Detect product category (keyword or embedding based)
+        3. Retrieve relevant products from ChromaDB
+        4. Build prompt with catalog + history + message
+        5. Call Claude (only LLM call in the project)
+        6. Detect conversation stage
+        7. Save messages to history
         """
         # Detect language
         session_state["lang"] = "ar" if self._is_arabic(user_msg) else "en"
 
-        # Detect category — only update if not already correctly identified
+        # Detect category using selected classification mode
+        # Only updates if not already correctly identified
         if not session_state.get("cat") or session_state.get("cat") == "unknown":
-            detected = self._classify(user_msg)
+            if CLASSIFICATION_MODE == "embeddings":
+                # Scalable approach — works for any number of PDFs automatically
+                detected = self._classify_with_embeddings(user_msg)
+            else:
+                # Simple approach — fast but requires manual keyword maintenance
+                detected = self._classify_with_keywords(user_msg)
+
             if detected != "unknown":
                 session_state["cat"] = detected
 
-        # Retrieve relevant products chunks from ChromaDB
+        # Retrieve relevant product chunks from ChromaDB
         docs = self.rag.retrieve(user_msg, cat=session_state.get("cat"))
         catalog = "\n\n".join(d.page_content for d in docs)
 
@@ -200,7 +230,7 @@ class Chatbot:
         # Call Claude — only LLM call in this project
         reply = self.llm.invoke([HumanMessage(content=prompt)]).content.strip()
 
-        # Detect if Claude is still  recommending 
+        # Detect if Claude is still clarifying or recommending
         session_state["stage"] = self._detect_stage(reply, session_state.get("q_count", 0))
         if session_state["stage"] == "clarifying":
             session_state["q_count"] = session_state.get("q_count", 0) + 1
@@ -211,8 +241,9 @@ class Chatbot:
 
         return reply
 
-    def _classify(self, text: str) -> str:
-        """Detect product category from user message using keyword matching."""
+    def _classify_with_keywords(self, text: str) -> str:
+        # Simple and fast — works well for small fixed catalogs
+        # requires manual updates when new categories are added
         t = text.lower()
         scores = {
             cat: sum(1 for kw in kws if kw in t)
@@ -221,10 +252,48 @@ class Chatbot:
         best = max(scores, key=lambda k: scores[k])
         return best if scores[best] > 0 else "unknown"
 
+    def _classify_with_embeddings(self, text: str) -> str:
+        # works automatically for any number of PDFs
+        # No manual keywords needed — reads categories directly from ChromaDB
+        categories = list(set(
+            m["category"]
+            for m in self.rag.collection.get(include=["metadatas"])["metadatas"]
+            if m.get("category") and m["category"] != "unknown"
+        ))
+
+        if not categories:
+            return "unknown"
+
+        # Convert the user message to a vector
+        query_vector = self.rag.model.encode(
+            [text], normalize_embeddings=True
+        ).tolist()[0]
+
+        best_cat = "unknown"
+        best_score = 0.0
+
+        # Compare against each category and pick the most similar one
+        for cat in categories:
+            results = self.rag.collection.query(
+                query_embeddings=[query_vector],
+                n_results=3,
+                where={"category": cat},
+            )
+            if results["distances"] and results["distances"][0]:
+                avg_distance = sum(results["distances"][0]) / len(results["distances"][0])
+                score = 1 - avg_distance
+                if score > best_score:
+                    best_score = score
+                    best_cat = cat
+
+        # Only return a category if similarity is above threshold
+        return best_cat if best_score > 0.3 else "unknown"
+
     def _is_arabic(self, text: str) -> bool:
         """Check if the message contains Arabic characters."""
         return any("\u0600" <= ch <= "\u06FF" for ch in text)
-    #Force recommendation after 3 questions or if certain signals are detected in the reply
+
+    # Force recommendation after 3 questions or if certain signals are detected in the reply
     def _detect_stage(self, reply: str, q_count: int) -> str:
         """Determine if Claude is still asking questions or ready to recommend."""
         if q_count >= 3:
