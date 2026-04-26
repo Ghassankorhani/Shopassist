@@ -171,7 +171,9 @@ All settings are in `app/config.py` and can be overridden via `.env`.
 
 ```
 Stage 1 — Category Detection
-  User message → keyword classifier → detect product family
+  User message → auto classifier → detect product family
+  ≤ 4 PDFs: keyword matching (fast, no extra computation)
+  > 4 PDFs: embedding similarity (automatic, scales to any catalog size)
   If ambiguous → ask one question to clarify
 
 Stage 2 — Clarification (max 3 questions)
