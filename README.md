@@ -189,14 +189,26 @@ Stage 3 — Recommendation
 
 ## 📝 Notes
 
-- The vectorstore builds automatically on first run 
 - Chat history saved to `data/history.json` — persists across sessions
-- The `.env` file is excluded from Git — API key stays private
+- The `.env` file is excluded from Git — your API key stays private
+- Always use the `-v` flag when running Docker to persist data correctly
 - PDFs must be placed in `data/raw/` before running
+
+## 🧠 Auto Classification
+
+The system automatically selects the best classification approach based on your catalog size:
+
+| PDFs in `data/raw/` | Mode | How it works |
+|---|---|---|
+| 4 or fewer | `keywords` | Fast keyword matching — works perfectly for small catalogs |
+| 5 or more | `embeddings` | Semantic similarity — scales automatically, no manual work needed |
+
+To expand the catalog just add a new PDF to `data/raw/` and rebuild.
+No code changes needed — the system adapts automatically.
 
 ---
 
 ## 👤 Developer
 
 **Ghassan Korhani**
-[github.com/Ghassankorhani](https://github.com/Ghassankorhani)
+[github.com/Ghassankorhani](https://github.com/Ghassankorhani/Shopassist)
