@@ -290,12 +290,12 @@ class Chatbot:
         return best_cat if best_score > 0.3 else "unknown"
 
     def _is_arabic(self, text: str) -> bool:
-        """Check if the message contains Arabic characters."""
+        #Check if the message contains Arabic characters
         return any("\u0600" <= ch <= "\u06FF" for ch in text)
 
     # Force recommendation after 3 questions or if certain signals are detected in the reply
     def _detect_stage(self, reply: str, q_count: int) -> str:
-        """Determine if Claude is still asking questions or ready to recommend."""
+        #Determine if Claude is still asking questions or ready to recommend
         if q_count >= 3:
             return "recommendation"
         if any(sig in reply.lower() for sig in RECOMMENDATION_SIGNALS):
